@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Agent 2.0 课堂助手前端：录音、实时转写、问答、纪要、资料库与补学。">
+<title>Agent 2.0 · 课堂助手</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ===================== 登录 ===================== -->
+<section class="screen-login" id="view-login" hidden>
+  <div class="login-left">
+    <div class="login-brand">
+      <div class="brand-mark">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18M3 12h18" stroke-linecap="round"/></svg>
+      </div>
+      <div>
+        <div class="brand-name">Agent 2.0</div>
+        <div class="brand-sub">课堂助手 · 实时听讲与问答</div>
+      </div>
+    </div>
+    <div class="login-copy">
+      <h1>把每一堂课<br>变成可回看的笔记。</h1>
+      <p>实时转写、中英互译、要点提炼与随堂问答，课后生成可检索的课堂纪要。</p>
+    </div>
+    <div class="login-orb-wrap"><div class="orb"></div></div>
+  </div>
+  <div class="login-right">
+    <form class="login-form" id="login-form">
+      <h2>登录</h2>
+      <p class="sub">使用校园账号进入你的课堂空间</p>
+      <div class="field">
+        <label for="login-user">账号</label>
+        <input class="input" id="login-user" type="text" placeholder="学号 / 邮箱" autocomplete="username" required>
+      </div>
+      <div class="field">
+        <label for="login-pass">密码</label>
+        <div class="pw-wrap">
+          <input class="input" id="login-pass" type="password" placeholder="输入密码" autocomplete="current-password" required>
+          <button type="button" class="pw-toggle" id="pw-toggle" aria-label="显示密码">👁</button>
+        </div>
+      </div>
+      <button class="btn btn-primary" type="submit">进入课堂空间</button>
+      <p class="login-hint">忘记密码？联系管理员重置</p>
+    </form>
+  </div>
+  <div class="login-foot">
+    <span>© 2026 Agent 2.0 · 课堂助手</span><span>隐私与安全</span>
+  </div>
+</section>
+
+<!-- ===================== 应用外壳 ===================== -->
+<div class="shell" id="app-shell" hidden>
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18M3 12h18" stroke-linecap="round"/></svg>
+      </div>
+      <div class="brand-text">
+        <div class="brand-name">Agent 2.0</div>
+        <div class="brand-sub">课堂助手</div>
+      </div>
+    </div>
+
+    <button class="btn-new-class" data-nav="new">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+      <span>新建课堂</span>
+    </button>
+
+    <div class="nav-sep">工作台</div>
+    <button class="nav-item" data-route="classrooms">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+      <span>课堂列表</span>
+    </button>
+    <button class="nav-item" data-route="library">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 5h9l2 2h5v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"/></svg>
+      <span>资料库</span>
+    </button>
+    <button class="nav-item" data-route="import">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 16V4m0 0l-4 4m4-4l4 4"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
+      <span>录音导入</span>
+    </button>
+
+    <div class="nav-sep">当前课堂</div>
+    <button class="nav-item" data-route="live">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z"/><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" fill="currentColor" stroke="none"/></svg>
+      <span>实时课堂</span>
+    </button>
+    <button class="nav-item" data-route="focus">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="5"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2"/></svg>
+      <span>专注模式</span>
+    </button>
+    <button class="nav-item" data-route="qa">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 12a8 8 0 0 1-8 8H4l2-3a8 8 0 1 1 15-5z"/></svg>
+      <span>随堂问答</span>
+    </button>
+    <button class="nav-item" data-route="summary">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M10 8h4M10 12h4"/></svg>
+      <span>停止总结</span>
+    </button>
+    <button class="nav-item" data-route="minutes">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 2h12v20l-6-4-6 4z"/></svg>
+      <span>课堂纪要</span>
+    </button>
+
+    <div class="nav-sep">学习</div>
+    <button class="nav-item" data-route="review">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20a8 8 0 1 0-8-8"/><path d="M4 8V4h4"/></svg>
+      <span>课后补学</span>
+    </button>
+
+    <div class="sidebar-foot">
+      <div class="avatar">Z</div>
+      <div class="who">周子棋</div>
+      <button class="icon-btn" data-nav="logout" title="退出登录">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></svg>
+      </button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <!-- ============ 课堂列表 ============ -->
+    <section id="view-classrooms" hidden>
+      <div class="page-head">
+        <div>
+          <h1>课堂列表</h1>
+          <div class="meta">共 24 个课堂记录</div>
+        </div>
+      </div>
+
+      <div class="resume-banner card" id="resume-banner">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="1.6"><path d="M9 2h6a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z"/><path d="M4 7h16M6 9v9a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V9"/></svg>
+        <div class="resume-info">
+          <h3>高等数学 · 第 12 周</h3>
+          <div class="meta">上次录音 2026-11-02 14:32 · 已录制 48 分 12 秒</div>
+          <div class="alert">⚠ 上次录音尚未保存完成，可继续或放弃</div>
+        </div>
+        <div class="resume-actions">
+          <button class="btn btn-primary" data-nav="live">继续课堂</button>
+          <button class="btn btn-outline" id="discard-resume">放弃本次</button>
+        </div>
+      </div>
+
+      <h2 class="section-title">历史课堂</h2>
+      <div class="card">
+        <table class="class-table">
+          <thead><tr><th>课堂</th><th>日期</th><th>时长</th><th>状态</th><th></th></tr></thead>
+          <tbody id="class-list"></tbody>
+        </table>
+        <button class="load-more" id="load-more">加载更多记录</button>
+      </div>
+    </section>
+
+    <!-- ============ 资料库 ============ -->
+    <section id="view-library" hidden>
+      <div class="page-head">
+        <div><h1>资料库</h1><div class="meta">上传课件，自动转写与识别</div></div>
+        <button class="btn btn-primary" id="btn-upload">上传资料</button>
+      </div>
+      <div class="library-grid">
+        <div class="card file-list" id="file-list"></div>
+        <div class="card preview-pane">
+          <div class="preview-head">
+            <h3 id="preview-title">原件预览</h3>
+            <span class="badge badge-ok" id="preview-state">就绪</span>
+          </div>
+          <div class="preview-body" id="preview-body"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 录音准备 ============ -->
+    <section id="view-prepare" hidden>
+      <div class="page-head">
+        <div><h1>录音准备</h1><div class="meta">确认设备与课件顺序后开始</div></div>
+      </div>
+      <div class="prepare-grid">
+        <div class="card mic-panel">
+          <h3>设备确认</h3>
+          <div class="mic-status">
+            <span class="badge badge-ok badge-dot" id="mic-badge">麦克风可用</span>
+            <span class="badge badge-warn" id="mic-level-text">环境音量 低</span>
+          </div>
+          <div class="mic-meter"><div class="mic-meter-fill" id="mic-meter" style="width: 34%"></div></div>
+          <p class="mic-note">说话时音条应波动；若持续无反应请检查输入设备。</p>
+          <ul class="check-list">
+            <li><svg class="ck" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg>课件已就绪（3 份）</li>
+            <li><svg class="ck" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg>存储空间充足</li>
+            <li><svg class="ck" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg>网络连接正常</li>
+          </ul>
+        </div>
+        <div class="card slide-sort">
+          <h3>课件顺序</h3>
+          <div id="slide-sort-list"></div>
+        </div>
+        <div class="start-bar">
+          <div class="cond" id="start-cond">✔ 条件满足，可以开始录音</div>
+          <button class="btn btn-primary" data-nav="live">开始录音</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 实时课堂 ============ -->
+    <section id="view-live" hidden>
+      <div class="live-head">
+        <div class="cls">高等数学 · 第 12 周</div>
+        <div class="layout-tabs" id="layout-tabs">
+          <button data-layout="transcript" class="active">转写单栏</button>
+          <button data-layout="slides">课件双栏</button>
+          <button data-layout="keypoints">要点双栏</button>
+        </div>
+        <div class="rec" id="rec-indicator"><span class="rec-dot"></span>录音中</div>
+      </div>
+
+      <div class="live-stage">
+        <!-- 转写单栏 -->
+        <div class="transcript-single" id="layout-transcript">
+          <div class="transcript-list" id="transcript-list"></div>
+        </div>
+        <!-- 课件双栏 -->
+        <div class="dual-grid wide-left" id="layout-slides" hidden>
+          <div class="card panel">
+            <h4>实时转写 <span class="cnt" id="slides-transcript-cnt"></span></h4>
+            <div class="transcript-list" id="slides-transcript"></div>
+          </div>
+          <div class="card panel">
+            <h4>课件 · 跟页 <span class="cnt" id="slide-page">第 1 / 18 页</span></h4>
+            <div class="slide-thumb">
+              <div class="ph title"></div><div class="ph w80"></div><div class="ph"></div><div class="ph w60"></div><div class="ph w80"></div><div class="ph w40"></div>
+            </div>
+            <div class="slide-nav"><button class="btn btn-ghost" id="slide-prev">‹ 上一页</button><button class="btn btn-ghost" id="slide-next">下一页 ›</button></div>
+          </div>
+        </div>
+        <!-- 要点双栏 -->
+        <div class="dual-grid wide-right" id="layout-keypoints" hidden>
+          <div class="card panel">
+            <h4>课件 <span class="cnt" id="kp-slide-page">第 1 / 18 页</span></h4>
+            <div class="slide-thumb">
+              <div class="ph title"></div><div class="ph w80"></div><div class="ph"></div><div class="ph w60"></div>
+            </div>
+          </div>
+          <div class="card panel">
+            <h4>课堂要点 <span class="cnt" id="kp-count"></span></h4>
+            <div id="keypoint-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="recording-bar">
+        <button class="rec-side" id="btn-focus">进入专注</button>
+        <button class="rec-main-btn" id="btn-record" title="暂停/继续"></button>
+        <span class="rec-time" id="rec-time">00:00</span>
+        <button class="rec-side stop" id="btn-stop">停止</button>
+      </div>
+    </section>
+
+    <!-- ============ 专注模式 ============ -->
+    <section id="view-focus" hidden>
+      <button class="btn btn-outline focus-exit" data-nav="live">退出专注</button>
+      <div class="focus-stage">
+        <div class="orb"></div>
+        <div class="focus-sentences">
+          <div class="focus-prev" id="focus-prev"></div>
+          <div class="focus-cur" id="focus-cur"></div>
+        </div>
+        <div class="focus-cite" id="focus-cite">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="1.8"><path d="M4 6h16v11H4z" rx="1"/><path d="M8 10h8M8 14h5"/></svg>
+          <div class="src">引用自 <b id="focus-src">高等数学课件 · 第 5 页</b></div>
+          <svg class="pin" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z"/></svg>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 随堂问答 ============ -->
+    <section id="view-qa" hidden>
+      <div class="page-head">
+        <div><h1>随堂问答</h1><div class="meta">基于课堂内容的即时回答</div></div>
+      </div>
+      <div class="qa-wrap" id="qa-list"></div>
+      <div class="chip-row" id="qa-chips"></div>
+      <div class="qa-input-bar">
+        <input class="input" id="qa-input" placeholder="输入你的问题…">
+        <button class="btn btn-primary" id="qa-send">提问</button>
+      </div>
+    </section>
+
+    <!-- ============ 停止总结 ============ -->
+    <section id="view-summary" hidden>
+      <div class="page-head">
+        <div><h1>停止总结</h1><div class="meta">录音已结束，正在生成课堂总结</div></div>
+      </div>
+      <div class="card sum-progress">
+        <div class="row"><h3>总结生成中</h3><span class="pct" id="sum-pct">0%</span></div>
+        <div class="bar"><div class="bar-fill" id="sum-bar" style="width: 0%"></div></div>
+        <div class="steps" id="sum-steps">
+          <span>转写整理</span><span>要点提炼</span><span>生成纪要</span>
+        </div>
+      </div>
+      <div class="sum-grid">
+        <div class="card player-panel">
+          <h3>录音回放</h3>
+          <div class="player-ctrl">
+            <button class="play-btn" id="play-btn">▶</button>
+            <span class="time" id="play-time">00:00 / 48:12</span>
+          </div>
+          <div class="timeline" id="timeline"></div>
+        </div>
+        <div class="card summary-panel">
+          <h3>课堂摘要</h3>
+          <ul id="summary-list"></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 纪要 ============ -->
+    <section id="view-minutes" hidden>
+      <div class="page-head">
+        <div><h1>课堂纪要</h1><div class="meta">已结束课堂 · 可检索、可导出</div></div>
+        <button class="btn btn-outline" id="btn-export">导出纪要</button>
+      </div>
+      <div class="minutes-head">
+        <div class="minutes-tabs" id="minutes-tabs">
+          <button data-mtab="minutes" class="active">纪要</button>
+          <button data-mtab="qa">历史问答</button>
+          <button data-mtab="slides">课件回看</button>
+        </div>
+      </div>
+      <div id="minutes-body"></div>
+    </section>
+
+    <!-- ============ 录音导入 ============ -->
+    <section id="view-import" hidden>
+      <div class="page-head">
+        <div><h1>录音导入</h1><div class="meta">导入已有录音，恢复转写与纪要</div></div>
+      </div>
+      <div class="card import-panel">
+        <h3>导入音频文件</h3>
+        <p class="sub">支持 mp3 / wav / m4a，导入后将自动识别并生成转写。</p>
+        <div class="upload-zone" id="import-zone">
+          <div style="font-size:30px">⬆</div>
+          <p style="margin-top:10px">点击选择或拖拽音频到此处</p>
+          <p style="font-size:12px;color:#9fb0aa">单个文件不超过 500 MB</p>
+        </div>
+        <div id="import-list"></div>
+      </div>
+    </section>
+
+    <!-- ============ 补学 ============ -->
+    <section id="view-review" hidden>
+      <div class="page-head">
+        <div><h1>课后补学</h1><div class="meta">根据你的薄弱点生成练习题</div></div>
+      </div>
+      <div class="review-stage" id="review-list"></div>
+    </section>
+  </main>
+</div>
+
+<!-- 上传弹窗 -->
+<div class="modal-mask" id="modal-upload" hidden>
+  <div class="modal">
+    <h3>上传资料</h3>
+    <p class="sub">支持 PDF / TXT，将自动进行文字转换。</p>
+    <div class="upload-zone" id="modal-upload-zone">
+      <div style="font-size:28px">⬆</div>
+      <p style="margin-top:8px">选择文件</p>
+    </div>
+    <div class="acts">
+      <button class="btn btn-outline" id="modal-upload-cancel">取消</button>
+      <button class="btn btn-primary" id="modal-upload-ok" disabled>确认上传</button>
+    </div>
+  </div>
+</div>
+
+<!-- 确认弹窗 -->
+<div class="modal-mask" id="modal-confirm" hidden>
+  <div class="modal">
+    <h3 id="confirm-title">确认操作</h3>
+    <p class="sub" id="confirm-text"></p>
+    <div class="acts">
+      <button class="btn btn-outline" id="confirm-cancel">取消</button>
+      <button class="btn btn-danger" id="confirm-ok">确认</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
