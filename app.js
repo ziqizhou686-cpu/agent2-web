@@ -1,6 +1,7 @@
 /* ============================================================
-   Agent 2.0 · 课堂助手 — 前端交互
+   Agent · 课堂助手 — 前端交互
    纯静态实现：hash 路由 + 本地状态 + 模拟数据流
+   内容对齐 16 张 UI 参考图（机器学习 · 第三讲 / 梯度下降主题）
    ============================================================ */
 "use strict";
 
@@ -8,113 +9,101 @@ const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const pad = n => String(n).padStart(2, "0");
 const fmt = s => `${pad(Math.floor(s / 60))}:${pad(s % 60)}`;
+const fmtH = s => `${pad(Math.floor(s / 3600))}:${pad(Math.floor(s / 60) % 60)}:${pad(s % 60)}`;
 
-/* ---------------- 模拟数据 ---------------- */
+/* ---------------- 模拟数据（对齐参考图） ---------------- */
 const CLASSROOMS = [
-  { name: "线性代数 · 矩阵分解", date: "2026-10-18", dur: "52:08" },
-  { name: "学术英语 · 文献阅读", date: "2026-10-16", dur: "61:40" },
-  { name: "机器学习 · 第二讲",   date: "2026-10-15", dur: "47:22" },
-  { name: "概率论 · 条件概率",   date: "2026-10-13", dur: "55:03" },
-  { name: "数据结构 · 图算法",   date: "2026-10-11", dur: "49:57" },
+  { name: "线性代数 · 矩阵分解", date: "2026.10.18" },
+  { name: "学术英语 · 文献阅读", date: "2026.10.16" },
+  { name: "机器学习 · 第二讲",   date: "2026.10.15" },
+  { name: "概率论 · 条件概率",   date: "2026.10.13" },
+  { name: "数据结构 · 图算法",   date: "2026.10.11" },
 ];
 
 const FILES = [
-  { name: "高等数学-第12周课件.pdf", meta: "PDF · 18 页", state: "ok" },
-  { name: "矩阵分解讲义.pdf",       meta: "PDF · 12 页", state: "proc" },
-  { name: "课后习题集.txt",         meta: "TXT · 6 KB",  state: "ok" },
-  { name: "参考文献清单.pdf",       meta: "PDF · 4 页",  state: "err" },
+  { name: "03_Gradient_Descent.pdf",  meta: "PDF · 4.8 MiB · 32 页", state: "ok",   pages: 32, kind: "pdf" },
+  { name: "术语补充.txt",             meta: "TXT · 28 KiB",          state: "ok",   pages: 1,  kind: "txt" },
+  { name: "04_Neural_Networks.pdf",   meta: "PDF · 8.2 MiB",         state: "proc", pages: 24, kind: "pdf" },
+  { name: "课堂补充扫描.pdf",          meta: "PDF · 3.6 MiB",         state: "part", pages: 12, kind: "pdf", partNote: "2 页内容待核对" },
 ];
 
+/* 转写流：英文原文 + 中文译文（对齐参考图 06 / 07 / 09） */
 const SENTENCES = [
-  "我们先把上节课的奇异值分解结论放回到矩阵的视角里。",
-  "如果一个矩阵可以写成 U 乘 Σ 乘 V 转置，那它的秩就等于 Σ 中非零奇异值的个数。",
-  "注意，这里 Σ 不一定是方阵，这正是 SVD 比特征分解更一般的原因。",
-  "接下来看几何意义：任何线性变换都可以拆成旋转、缩放、再旋转三步。",
-  "低秩近似的意义在于，用前 k 个奇异值就能保留矩阵的主要信息。",
-  "在图像压缩里，这就是把一张图变成若干个秩一矩阵的叠加。",
-  "同学们可以课后试一下，取 k 等于 10 和 k 等于 50 的重建效果差异。",
-  "下一部分我们讲主成分分析，它和 SVD 的联系会非常紧密。",
+  { en: "The learning rate controls the size of each update.",      zh: "学习率决定每次参数更新的步长。", t: "00:22:48" },
+  { en: "The learning rate controls how far we move at each step.", zh: "学习率决定了每一步沿梯度方向移动的距离。", t: "00:23:10" },
+  { en: "If it is too large, the loss may oscillate around the minimum.", zh: "学习率过大时，损失可能在最小值附近来回震荡。", t: "00:23:25" },
+  { en: "A smaller learning rate makes convergence more stable.",   zh: "较小的学习率通常让收敛更稳定。", t: "00:24:10" },
+  { en: "If the learning rate is too small, the convergence will be very slow.", zh: "学习率过小则会导致收敛非常缓慢。", t: "00:24:15" },
 ];
 
+/* 段落要点（对齐参考图 06-03） */
 const KEYPOINTS = [
-  "SVD 的定义：A = UΣVᵀ，Σ 非奇异值个数 = 矩阵的秩",
-  "SVD 比特征分解更一般：适用于非方阵",
-  "几何意义：旋转 → 缩放 → 旋转",
-  "低秩近似：前 k 个奇异值保留主要信息",
-  "应用：图像压缩 = 秩一矩阵叠加",
+  { t: "00:23:10", title: "学习率决定更新步长", desc: "学习率控制每次沿梯度方向移动的距离。" },
+  { t: "00:23:25", title: "学习率过大：容易震荡", desc: "步长过大时，损失可能在最小值附近来回震荡。" },
+  { t: "00:24:15", title: "学习率过小：收敛缓慢", desc: "步长过小会减慢参数更新，使收敛过程变慢。", current: true },
 ];
 
-const QA_SUGGEST = ["SVD 和特征分解的区别？", "为什么低秩近似有效？", "PCA 和 SVD 什么关系？"];
+/* 引用区条目（对齐参考图 07；selection 为默认框选句） */
+const REF_ITEMS = [
+  { t: "00:22:48", en: "The learning rate controls the size of each update.",    zh: "学习率决定每次参数更新的步长。" },
+  { t: "00:23:25", en: "If it is too large, the loss may oscillate around the minimum.", zh: "学习率过大时，损失可能在最小值附近来回震荡。", selection: true },
+  { t: "00:24:10", en: "A smaller learning rate makes convergence more stable.", zh: "较小的学习率通常让收敛更稳定。" },
+];
 
-const QA_ANSWERS = {
-  default: {
-    text: "根据本节课的内容：SVD 对任意矩阵都存在，不需要方阵；而特征分解只适用于可对角化的方阵。两者的联系在于，AᵀA 的特征向量就是 A 的右奇异向量。",
-    cite: "高等数学课件 · 第 5 页 · 08:42",
-  },
+const QA_ANSWER = {
+  strong: "因为每一步都可能跨过最低点。",
+  body: "可以把参数更新想象成下山：步子太大，会从谷底的一侧跳到另一侧。适当减小学习率，可以让更新逐渐靠近最低点。",
+  cite: "课件第 12 页",
 };
 
-const TIMELINE = [
-  ["00:00", "开场：回顾上节课奇异值分解的结论"],
-  ["06:18", "SVD 定义与秩的关系"],
-  ["14:35", "几何意义：旋转、缩放、旋转"],
-  ["22:07", "低秩近似与信息保留"],
-  ["31:44", "例题：手算 2×3 矩阵的 SVD"],
-  ["40:12", "图像压缩应用演示"],
-  ["45:30", "引出下一讲：主成分分析"],
+/* 课堂时间轴（对齐参考图 09-01） */
+const MTIMELINE = [
+  { t: "00:00", label: "梯度下降概念" },
+  { t: "12:40", label: "参数更新方向" },
+  { t: "23:25", label: "学习率与震荡", active: true },
+  { t: "39:10", label: "收敛与练习" },
 ];
 
-const SUMMARY = [
-  "SVD 将任意矩阵分解为 UΣVᵀ，适用于非方阵，是特征分解的推广。",
-  "矩阵的秩等于 Σ 中非零奇异值的个数。",
-  "任何线性变换都可以拆解为「旋转 → 缩放 → 旋转」三个基本操作。",
-  "低秩近似用前 k 个奇异值重建矩阵，是图像压缩的数学基础。",
-  "下一讲将从 SVD 过渡到主成分分析（PCA），注意两者基向量的关系。",
-];
-
-const MINUTES = [
-  { title: "本讲主题", body: "奇异值分解（SVD）的定义、几何意义与低秩近似应用。", src: "课件 1–4 页 · 00:00–14:35" },
-  { title: "核心结论", body: "A = UΣVᵀ；秩 = 非零奇异值个数；任何线性变换 = 旋转 → 缩放 → 旋转。", src: "课件 5–9 页 · 06:18–22:07" },
-  { title: "例题记录", body: "板书演示了 2×3 矩阵的手算 SVD 过程，强调 V 转置不要漏写。", src: "课件 10 页 · 31:44" },
-  { title: "应用延伸", body: "图像压缩 = 若干秩一矩阵的叠加；k 越大重建越清晰、数据量越大。", src: "课件 12–15 页 · 40:12" },
-  { title: "下讲预告", body: "PCA 与 SVD 的联系：AᵀA 的特征向量即 A 的右奇异向量。", src: "课件 16–18 页 · 45:30" },
+const CORE_POINTS = [
+  { title: "更新方向", desc: "沿负梯度方向移动，逐步降低损失。", t: "00:00" },
+  { title: "学习率",   desc: "过大会震荡，过小会减慢收敛。",     t: "12:40" },
+  { title: "收敛判断", desc: "结合损失变化与梯度大小观察。",     t: "39:10" },
 ];
 
 const MINUTES_QA = [
-  { q: "SVD 和特征分解的区别？", a: "SVD 对任意矩阵存在；特征分解只适用于可对角化方阵。", time: "08:42" },
-  { q: "为什么低秩近似有效？", a: "大部分真实矩阵的奇异值衰减很快，前 k 个已覆盖主要能量。", time: "24:15" },
-  { q: "PCA 和 SVD 什么关系？", a: "PCA 的主成分方向来自数据矩阵的 SVD，可避免直接算协方差矩阵。", time: "46:02" },
-];
-
-const REVIEW = [
-  { q: "一个 3×5 矩阵的 SVD 中，Σ 的形状是？", opts: ["3×3", "3×5", "5×5", "5×3"], ans: 1 },
-  { q: "矩阵的秩等于什么？", opts: ["行数", "非零奇异值个数", "特征值个数", "行列式的值"], ans: 1 },
-  { q: "低秩近似中，k 增大会怎样？", opts: ["重建更清晰、数据量更大", "重建更模糊", "秩变小", "与 k 无关"], ans: 0 },
+  { q: "为什么学习率过大会震荡?", a: "步长过大，可能反复跨过最低点。", time: "23:25", cite: "课件第 12 页" },
+  { q: "学习率一般怎么设置?",     a: "常用 0.001 起步，配合学习率衰减调度。", time: "31:02", cite: "课件第 14 页" },
+  { q: "收敛变慢一定是坏事吗?",   a: "不一定，小步长更稳定，可与动量法配合。", time: "40:18", cite: "课件第 20 页" },
 ];
 
 const SLIDES = [
-  { name: "高等数学-第12周课件.pdf", pages: 18 },
-  { name: "矩阵分解讲义.pdf", pages: 12 },
-  { name: "课后习题集.txt", pages: 6 },
+  { name: "03_Gradient_Descent.pdf", meta: "PDF · 4.8 MiB · 32 页", state: "ok" },
+  { name: "术语补充.txt",            meta: "TXT · 28 KiB",          state: "ok" },
+];
+
+const REVIEW = [
+  { q: "学习率过大会导致什么？", opts: ["在最小值附近来回震荡", "收敛加快", "损失单调下降", "没有影响"], ans: 0 },
+  { q: "梯度下降的更新方向是？", opts: ["沿负梯度方向", "沿梯度方向", "随机方向", "垂直于梯度"], ans: 0 },
+  { q: "学习率过小会怎样？",     opts: ["收敛非常缓慢", "立即发散", "震荡加剧", "不影响收敛"], ans: 0 },
 ];
 
 /* ---------------- 全局状态 ---------------- */
 const state = {
-  recording: false,
   paused: false,
-  recSec: 0,
-  sIdx: 0,
-  kIdx: 0,
-  slidePage: 1,
-  slidePages: 18,
-  playSec: 0,
-  playing: false,
-  focusIdx: 0,
+  recSec: 1458,            /* 00:24:18 起播（对齐参考图） */
+  savedSec: 1452,          /* 已保存至 00:24:12 */
+  sIdx: 2,
+  slidePage: 8, slidePages: 32,
+  previewPage: 1,
+  lang: "both",            /* en | both */
+  sideOpen: false, sideTab: "slides",
+  playing: false, playSec: 23 * 60 + 25, playTotal: 48 * 60 + 26, speed: 1.0,
+  focusIdx: 2,
   timers: {},
 };
 
 /* ---------------- 路由 ---------------- */
 const ROUTES = ["classrooms", "library", "prepare", "live", "focus", "qa", "summary", "minutes", "import", "review"];
-const TITLES = { live: "实时课堂", focus: "专注模式" };
 
 let current = null;
 
@@ -131,7 +120,7 @@ function show(route) {
   if (route === "focus") startFocus();
   if (route === "qa") initQA();
   if (route === "summary") startSummary();
-  if (route === "minutes") renderMinutes("minutes");
+  if (route === "minutes") renderMinutes();
   if (route === "import") renderImport();
   if (route === "review") renderReview();
 }
@@ -143,7 +132,7 @@ document.addEventListener("click", e => {
   if (t === "logout") return confirmModal("退出登录", "未保存的录音内容将保留在本机，下次登录可恢复。", () => { $("#app-shell").hidden = true; $("#view-login").hidden = false; });
   if (t === "new") return show("prepare");
   if (nav.dataset.route) show(nav.dataset.route);
-  if (nav.dataset.nav) show(nav.dataset.nav === "live" ? "live" : nav.dataset.nav);
+  else if (nav.dataset.nav) show(nav.dataset.nav);
 });
 
 /* ---------------- 登录 ---------------- */
@@ -158,303 +147,537 @@ $("#pw-toggle").addEventListener("click", () => {
   p.type = p.type === "password" ? "text" : "password";
 });
 
-/* ---------------- 课堂列表 ---------------- */
-let clsShown = 3;
+/* ---------------- 02 课堂列表 ---------------- */
+let clsShown = 4;
 function renderClassrooms() {
   $("#class-list").innerHTML = CLASSROOMS.slice(0, clsShown).map(c => `
     <tr>
       <td><span class="cname">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 2h9l4 4v16H6z"/><path d="M15 2v4h4"/></svg>
         ${c.name}</span></td>
-      <td>${c.date}</td><td>${c.dur}</td>
+      <td>${c.date}</td>
       <td><span class="badge badge-ok badge-dot">已结束</span></td>
       <td><a class="op" data-route="minutes">查看纪要 →</a></td>
     </tr>`).join("");
 }
 $("#load-more").addEventListener("click", () => { clsShown = CLASSROOMS.length; renderClassrooms(); });
-$("#discard-resume").addEventListener("click", () =>
-  confirmModal("放弃本次录音", "放弃后「高等数学 · 第 12 周」的未保存录音将从本机移除，此操作不可撤销。", () => $("#resume-banner").remove()));
+$("#new-class-btn").addEventListener("click", () => show("prepare"));
 
-/* ---------------- 资料库 ---------------- */
+/* ---------------- 03 资料库 ---------------- */
+const STATE_LABEL = {
+  ok:   '<span class="fstate ok"><span class="fcheck">✓</span>可用</span>',
+  proc: '<span class="fstate proc"><span class="fspin"></span>转换中</span>',
+  part: '<span class="fstate part"><span class="fpart-ico">!</span>部分可用</span>',
+};
 function renderLibrary() {
   $("#file-list").innerHTML = FILES.map((f, i) => `
-    <div class="file-item ${i === 0 ? "active" : ""}" data-fi="${i}">
-      <svg class="ficon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 2h9l4 4v16H6z"/><path d="M15 2v4h4"/></svg>
-      <span class="fname">${f.name}</span>
-      <span class="fmeta">${f.meta}</span>
-      <span class="status-dot ${f.state}"></span>
+    <div class="ft-row ${i === 0 ? "active" : ""}" data-fi="${i}" tabindex="0" role="button">
+      <span class="ft-icon ${f.kind === "pdf" ? "pdf" : "txt"}">
+        ${f.kind === "pdf"
+          ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="#c94436"><path d="M6 2h9l4 4v16H6z"/></svg>'
+          : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#576b65" stroke-width="1.8"><path d="M6 2h9l4 4v16H6z"/><path d="M9 11h6M9 15h6"/></svg>'}
+      </span>
+      <span class="ft-main"><b>${f.name}</b><span>${f.meta}</span>${f.partNote ? `<span class="ft-part-note">${f.partNote}</span>` : ""}</span>
+      ${STATE_LABEL[f.state]}
     </div>`).join("");
-  $$("#file-list .file-item").forEach(el => el.addEventListener("click", () => {
-    $$("#file-list .file-item").forEach(x => x.classList.remove("active"));
-    el.classList.add("active");
-    openFile(FILES[+el.dataset.fi]);
-  }));
+  $$("#file-list .ft-row").forEach(el => {
+    const open = () => {
+      $$("#file-list .ft-row").forEach(x => x.classList.remove("active"));
+      el.classList.add("active");
+      openFile(FILES[+el.dataset.fi]);
+    };
+    el.addEventListener("click", open);
+    el.addEventListener("keydown", e => { if (e.key === "Enter") open(); });
+  });
+  $("#lib-note").textContent = `当前有 ${FILES.filter(f => f.state === "proc").length} 份资料正在处理。`;
   openFile(FILES[0]);
 }
 
+/* 模拟课件页（Gradient Descent） */
+function slidePageHTML(title) {
+  return `
+    <div class="sp-title">${title || "Gradient Descent"}</div>
+    <p class="sp-body">We iteratively move in the direction of the negative gradient to minimize the loss function.</p>
+    <div class="sp-formula">θ ← θ − α∇J(θ)</div>
+    <div class="sp-chart">
+      <svg viewBox="0 0 320 170" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+        <line x1="30" y1="10" x2="30" y2="145" stroke="#9fb0aa" stroke-width="1.4"/>
+        <line x1="30" y1="145" x2="305" y2="145" stroke="#9fb0aa" stroke-width="1.4"/>
+        <path d="M45 25 Q 110 150 170 130 T 290 118" fill="none" stroke="#15664e" stroke-width="2"/>
+        <circle cx="63" cy="66" r="4" fill="#15664e"/><circle cx="88" cy="108" r="4" fill="#15664e"/><circle cx="126" cy="130" r="4" fill="#15664e"/>
+        <text x="46" y="58" font-size="10" fill="#33443f">∇J(θ)</text>
+        <text x="238" y="112" font-size="10" fill="#33443f">Minimum</text>
+        <text x="12" y="80" font-size="11" fill="#33443f" font-style="italic">J(θ)</text>
+        <text x="163" y="162" font-size="11" fill="#33443f" font-style="italic">θ</text>
+      </svg>
+    </div>`;
+}
+
 function openFile(f) {
-  $("#preview-title").textContent = f.name;
-  const badge = $("#preview-state");
-  const body = $("#preview-body");
+  $("#preview-name").textContent = f.name;
+  const page = $("#preview-page");
   if (f.state === "proc") {
-    badge.textContent = "转换中"; badge.className = "badge badge-warn";
-    body.innerHTML = `<div class="proc-row"><span class="spinner"></span>正在处理，完成后可预览…</div>`;
-  } else if (f.state === "err") {
-    badge.textContent = "转换失败"; badge.className = "badge badge-danger";
-    body.innerHTML = `<p>该文件的文字转换未成功（页面为扫描件，OCR 不可用）。</p><p style="margin-top:8px;color:var(--muted)">原件仍可预览，可尝试重新上传更清晰的版本。</p>`;
+    page.innerHTML = `<div class="proc-row"><span class="spinner"></span>正在处理，完成后可预览…</div>`;
+    $("#preview-pager").textContent = "—";
+  } else if (f.state === "part") {
+    page.innerHTML = slidePageHTML() + `<div class="part-note">⚠ 第 3、7 页内容待核对，可能与原扫描件有出入。</div>`;
+    $("#preview-pager").textContent = "1 / 12";
+  } else if (f.kind === "txt") {
+    page.innerHTML = `<div class="sp-title">术语补充</div>
+      <p class="sp-body">learning rate（学习率）：每次参数更新的步长系数。<br>gradient（梯度）：损失函数对参数的偏导向量。<br>convergence（收敛）：损失随迭代趋于稳定的过程。</p>`;
+    $("#preview-pager").textContent = "1 / 1";
   } else {
-    badge.textContent = "就绪"; badge.className = "badge badge-ok";
-    body.innerHTML = `<p><b>${f.name.replace(/\.\w+$/, "")}</b></p>
-      <p style="margin-top:12px">1.1 奇异值分解的定义</p>
-      <p>设 A 为 m×n 实矩阵，则存在正交矩阵 U（m×m）与 V（n×n），以及对角矩阵 Σ（m×n），使得 A = UΣVᵀ。</p>
-      <p style="margin-top:12px">1.2 与秩的关系</p>
-      <p>矩阵 A 的秩等于 Σ 中非零奇异值的个数。这一结论在低秩近似中起到关键作用。</p>`;
+    page.innerHTML = slidePageHTML();
+    $("#preview-pager").textContent = `${state.previewPage} / ${f.pages}`;
+  }
+  state.previewPage = 1;
+}
+$("#preview-prev").addEventListener("click", () => setPage(state.previewPage - 1));
+$("#preview-next").addEventListener("click", () => setPage(state.previewPage + 1));
+function setPage(p) {
+  state.previewPage = Math.min(Math.max(1, p), 32);
+  const f = FILES[$$("#file-list .ft-row").findIndex(x => x.classList.contains("active"))] || FILES[0];
+  if (f.state === "ok" && f.kind === "pdf") {
+    $("#preview-pager").textContent = `${state.previewPage} / ${f.pages}`;
+    $("#preview-page").innerHTML = slidePageHTML();
   }
 }
 
-/* 上传弹窗 */
-const modalUpload = $("#modal-upload");
-$("#btn-upload").addEventListener("click", () => { modalUpload.hidden = false; $("#modal-upload-ok").disabled = true; });
-$("#modal-upload-cancel").addEventListener("click", () => modalUpload.hidden = true);
-$("#modal-upload-zone").addEventListener("click", () => $("#modal-upload-ok").disabled = false);
+/* 上传列表弹窗 */
+$("#library-upload").addEventListener("click", () => { $("#modal-upload").hidden = false; });
+$("#library-upload").addEventListener("keydown", e => { if (e.key === "Enter") $("#modal-upload").hidden = false; });
+$("#modal-upload-x").addEventListener("click", () => $("#modal-upload").hidden = true);
+$("#modal-upload-cancel").addEventListener("click", () => $("#modal-upload").hidden = true);
 $("#modal-upload-ok").addEventListener("click", () => {
-  modalUpload.hidden = true;
-  FILES.unshift({ name: "新上传资料.pdf", meta: "PDF · 刚刚", state: "proc" });
-  renderLibrary();
+  $("#modal-upload").hidden = true;
+  confirmModal("已加入上传", "2 个文件已加入队列，转换完成后将出现在列表中。", () => {});
 });
 
-/* 通用确认弹窗 */
-let confirmCb = null;
-function confirmModal(title, text, cb) {
-  $("#confirm-title").textContent = title;
-  $("#confirm-text").textContent = text;
-  confirmCb = cb;
-  $("#modal-confirm").hidden = false;
-}
-$("#confirm-cancel").addEventListener("click", () => $("#modal-confirm").hidden = true);
-$("#confirm-ok").addEventListener("click", () => { $("#modal-confirm").hidden = true; confirmCb && confirmCb(); });
-
-/* ---------------- 录音准备 ---------------- */
+/* ---------------- 04 录音准备 ---------------- */
 function renderPrepare() {
-  $("#slide-sort-list").innerHTML = SLIDES.map((s, i) => `
-    <div class="sort-item">
-      <span class="idx">${i + 1}</span><span class="name">${s.name}</span>
-      <button class="move" data-mv="up" data-i="${i}" title="上移">↑</button>
-      <button class="move" data-mv="down" data-i="${i}" title="下移">↓</button>
+  $("#prep-list").innerHTML = SLIDES.map((s, i) => `
+    <div class="prep-row" draggable="true" data-i="${i}">
+      <span class="prep-handle" title="拖动排序">⋮⋮</span>
+      <span class="prep-idx">${pad(i + 1)}</span>
+      <span class="prep-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 2h9l4 4v16H6z"/><path d="M15 2v4h4"/></svg>
+      </span>
+      <span class="prep-name">${s.name}</span>
+      <span class="prep-meta">${s.meta}</span>
+      <span class="prep-state"><span class="dot-ok dot-ok--solid"></span>已就绪</span>
+      <button class="prep-remove" data-rm="${i}">移除</button>
     </div>`).join("");
-  $$("#slide-sort-list .move").forEach(b => b.addEventListener("click", () => {
-    const i = +b.dataset.i, j = b.dataset.mv === "up" ? i - 1 : i + 1;
-    if (j < 0 || j >= SLIDES.length) return;
-    [SLIDES[i], SLIDES[j]] = [SLIDES[j], SLIDES[i]];
+
+  $$("#prep-list .prep-remove").forEach(b => b.addEventListener("click", () => {
+    SLIDES.splice(+b.dataset.rm, 1);
+    updateQuota();
     renderPrepare();
   }));
-  clearInterval(state.timers.mic);
-  state.timers.mic = setInterval(() => {
-    $("#mic-meter").style.width = (20 + Math.random() * 55).toFixed(0) + "%";
-  }, 500);
+
+  /* 拖拽排序 */
+  let dragIdx = null;
+  $$("#prep-list .prep-row").forEach(row => {
+    row.addEventListener("dragstart", () => { dragIdx = +row.dataset.i; row.classList.add("dragging"); });
+    row.addEventListener("dragend", () => row.classList.remove("dragging"));
+    row.addEventListener("dragover", e => e.preventDefault());
+    row.addEventListener("drop", e => {
+      e.preventDefault();
+      const to = +row.dataset.i;
+      if (dragIdx === null || dragIdx === to) return;
+      const [m] = SLIDES.splice(dragIdx, 1);
+      SLIDES.splice(to, 0, m);
+      renderPrepare();
+    });
+  });
+  updateQuota();
+}
+function updateQuota() {
+  $("#quota-main").textContent = `已选 ${SLIDES.length}/10 份 · 4.83 / 100 MiB`;
+  if (!SLIDES.length) $("#quota-main").textContent = "已选 0/10 份 · 0 / 100 MiB";
+}
+$("#pick-from-library").addEventListener("click", () =>
+  confirmModal("从资料库选择", "从资料库已就绪的课件中勾选加入本次课堂（演示）。", () => {
+    SLIDES.push({ name: "04_Neural_Networks.pdf", meta: "PDF · 8.2 MiB · 24 页", state: "ok" });
+    renderPrepare();
+  }));
+$("#upload-add").addEventListener("click", () =>
+  confirmModal("上传并添加", "选择本地 PDF / TXT 文件，确认后加入本次课件列表（演示）。", () => {
+    SLIDES.push({ name: "课堂笔记.pdf", meta: "PDF · 1.1 MiB · 6 页", state: "ok" });
+    renderPrepare();
+  }));
+
+/* 设备确认弹窗 */
+$("#btn-start-listen").addEventListener("click", () => { $("#modal-device").hidden = false; });
+$("#skip-slides").addEventListener("click", () => { $("#modal-device").hidden = false; });
+$("#modal-device-x").addEventListener("click", () => $("#modal-device").hidden = true);
+$("#modal-device-cancel").addEventListener("click", () => $("#modal-device").hidden = true);
+$("#modal-device-ok").addEventListener("click", () => { $("#modal-device").hidden = true; show("live"); });
+(function initMicBars() {
+  const box = $("#mic-bars");
+  if (!box) return;
+  for (let i = 0; i < 18; i++) {
+    const b = document.createElement("span");
+    b.style.setProperty("--h", (i < 10 ? 40 + Math.random() * 60 : 18 + Math.random() * 20) + "%");
+    box.appendChild(b);
+  }
+})();
+
+/* ---------------- 05 实时课堂 ---------------- */
+function stopLiveLoops() {
+  ["rec", "stream", "focus", "mic", "play"].forEach(k => {
+    clearInterval(state.timers[k]);
+    delete state.timers[k];
+  });
 }
 
-/* ---------------- 实时课堂 ---------------- */
-function stopLiveLoops() {
-  ["rec", "stream", "kp", "focus", "mic"].forEach(k => { clearInterval(state.timers[k]); delete state.timers[k]; });
+function transcriptItemHTML(s, mode, recognizing) {
+  const en = `<p class="t-en">${s.en}</p>`;
+  const zh = `<p class="t-zh">${s.zh}</p>`;
+  const body = mode === "en" ? en : en + zh;
+  if (recognizing) {
+    return `<div class="t-item recognizing"><span class="t-badge">正在识别</span><span class="t-time">${s.t}</span>${body}</div>`;
+  }
+  return `<div class="t-item"><span class="t-time">${s.t}</span>${body}</div>`;
+}
+
+function renderLiveTranscript() {
+  const done = SENTENCES.slice(0, state.sIdx);
+  const cur = SENTENCES[state.sIdx] || SENTENCES[SENTENCES.length - 1];
+  $("#live-transcript").innerHTML =
+    done.map(s => transcriptItemHTML(s, state.lang, false)).join("") +
+    transcriptItemHTML(cur, state.lang, true);
+  const flow = $("#live-transcript");
+  flow.scrollTop = flow.scrollHeight;
+}
+
+function renderLiveSide() {
+  $("#live-slide-page").innerHTML = slidePageHTML();
+  $("#live-slide-pager").textContent = `${state.slidePage} / ${state.slidePages}`;
+  $("#kp-live-list").innerHTML = KEYPOINTS.map(k => `
+    <div class="kp-item ${k.current ? "kp-current" : ""}">
+      <div class="kp-meta"><span class="kp-time">${k.t}</span>${k.current ? '<span class="kp-badge">当前段落</span>' : ""}</div>
+      <b class="kp-heading">${k.title}</b>
+      <p class="kp-desc">${k.desc}</p>
+    </div>`).join("");
 }
 
 function startLive() {
-  $("#rec-indicator").style.display = "";
-  state.recording = true;
-  if (!state.timers.rec) state.timers.rec = setInterval(() => { if (!state.paused) { state.recSec++; $("#rec-time").textContent = fmt(state.recSec); } }, 1000);
-  if (!state.timers.stream) state.timers.stream = setInterval(() => { if (!state.paused) pushSentence(); }, 2600);
-  if (!state.timers.kp) state.timers.kp = setInterval(() => { if (!state.paused) pushKeypoint(); }, 9000);
-  setRecordBtn();
-  applyLayout($(".layout-tabs .active")?.dataset.layout || "transcript");
+  state.paused = false;
+  setPauseUI();
+  renderLiveTranscript();
+  renderLiveSide();
+  applySide();
+  clearInterval(state.timers.rec);
+  state.timers.rec = setInterval(() => {
+    if (state.paused) return;
+    state.recSec++;
+    state.savedSec = Math.max(0, state.recSec - 6);
+    $("#rb-time").textContent = fmtH(state.recSec);
+    $("#rb-saved").textContent = fmtH(state.savedSec);
+    $("#fb-time") && ($("#fb-time").textContent = fmtH(state.recSec));
+    $("#fb-saved") && ($("#fb-saved").textContent = fmtH(state.savedSec));
+  }, 1000);
+  clearInterval(state.timers.stream);
+  state.timers.stream = setInterval(() => {
+    if (state.paused) return;
+    state.sIdx = Math.min(state.sIdx + 1, SENTENCES.length - 1);
+    renderLiveTranscript();
+  }, 5200);
 }
-
-function pushSentence() {
-  const s = SENTENCES[state.sIdx % SENTENCES.length];
-  state.sIdx++;
-  const time = fmt(state.recSec);
-  $$(".transcript-list").forEach(list => {
-    list.querySelectorAll(".tl-item.latest").forEach(x => x.classList.remove("latest"));
-    const div = document.createElement("div");
-    div.className = "tl-item latest";
-    div.innerHTML = `<span class="ts">${time}</span><span class="txt">${s}${state.sIdx % 4 === 0 ? '<span class="tag">译</span>' : ""}</span>`;
-    list.appendChild(div);
-    list.scrollTop = list.scrollHeight;
-  });
-  $("#slides-transcript-cnt") && ($("#slides-transcript-cnt").textContent = state.sIdx + " 条");
-  $("#kp-count") && ($("#kp-count").textContent = Math.min(state.kIdx, KEYPOINTS.length) + " 条");
+function setPauseUI() {
+  $("#rb-pause-icon").textContent = state.paused ? "▶" : "❚❚";
+  $("#rb-pause-label").textContent = state.paused ? "继续" : "暂停";
+  $("#fb-pause-icon") && ($("#fb-pause-icon").textContent = state.paused ? "▶" : "❚❚");
+  $("#fb-pause-label") && ($("#fb-pause-label").textContent = state.paused ? "继续" : "暂停");
 }
-
-function pushKeypoint() {
-  if (state.kIdx >= KEYPOINTS.length) return;
-  const k = KEYPOINTS[state.kIdx++];
-  const list = $("#keypoint-list");
-  if (!list) return;
-  const div = document.createElement("div");
-  div.className = "keypoint-item";
-  div.innerHTML = `<span class="k">▸</span><span>${k}</span>`;
-  list.appendChild(div);
-  $("#kp-count").textContent = state.kIdx + " 条";
+function togglePause() { state.paused = !state.paused; setPauseUI(); }
+$("#rb-pause").addEventListener("click", togglePause);
+$("#fb-pause").addEventListener("click", togglePause);
+function stopAndSummarize() {
+  confirmModal("停止并总结", `录音时长 ${fmtH(state.recSec)}。停止后将自动整理转写并生成全文纪要。`, () => show("summary"));
 }
+$("#rb-stop").addEventListener("click", stopAndSummarize);
+$("#fb-stop").addEventListener("click", stopAndSummarize);
 
-function setRecordBtn() {
-  const b = $("#btn-record");
-  b.classList.toggle("paused", state.paused);
-  b.innerHTML = state.paused ? "▶" : "❚❚";
-  $("#rec-indicator").innerHTML = state.paused
-    ? '<span class="badge badge-warn">已暂停</span>'
-    : '<span class="rec-dot"></span>录音中';
-}
-
-$("#btn-record").addEventListener("click", () => { state.paused = !state.paused; setRecordBtn(); });
-$("#btn-stop").addEventListener("click", () =>
-  confirmModal("结束录音", `录音时长 ${fmt(state.recSec)}。结束后将自动整理转写并生成课堂总结。`, () => { stopLiveLoops(); show("summary"); }));
-$("#btn-focus").addEventListener("click", () => show("focus"));
-
-$("#layout-tabs").addEventListener("click", e => {
-  const b = e.target.closest("button"); if (!b) return;
-  $$("#layout-tabs button").forEach(x => x.classList.remove("active"));
+/* 原 / 双 切换 */
+$("#lang-seg").addEventListener("click", e => {
+  const b = e.target.closest(".seg-btn"); if (!b) return;
+  $$("#lang-seg .seg-btn").forEach(x => x.classList.remove("active"));
   b.classList.add("active");
-  applyLayout(b.dataset.layout);
+  state.lang = b.dataset.lang;
+  renderLiveTranscript();
 });
-function applyLayout(l) {
-  $("#layout-transcript").hidden = l !== "transcript";
-  $("#layout-slides").hidden = l !== "slides";
-  $("#layout-keypoints").hidden = l !== "keypoints";
-}
 
-$("#slide-prev").addEventListener("click", () => setPage(state.slidePage - 1));
-$("#slide-next").addEventListener("click", () => setPage(state.slidePage + 1));
-function setPage(p) {
-  state.slidePage = Math.min(Math.max(1, p), state.slidePages);
-  $("#slide-page").textContent = `第 ${state.slidePage} / ${state.slidePages} 页`;
-  $("#kp-slide-page").textContent = `第 ${state.slidePage} / ${state.slidePages} 页`;
+/* 课件 / 要点 右栏开关 */
+function applySide() {
+  $("#live-side").hidden = !state.sideOpen;
+  $("#live-transcript-col").classList.toggle("with-side", state.sideOpen);
 }
+$("#btn-side-toggle").addEventListener("click", () => { state.sideOpen = !state.sideOpen; applySide(); });
+$("#btn-append").addEventListener("click", () =>
+  confirmModal("追加课件", "从资料库选择课件追加到当前课堂（演示）。", () => {}));
+$$("#live-side .ptab").forEach(t => t.addEventListener("click", () => {
+  $$("#live-side .ptab").forEach(x => x.classList.remove("active"));
+  t.classList.add("active");
+  $("#side-slides").hidden = t.dataset.ptab !== "slides";
+  $("#side-keypoints").hidden = t.dataset.ptab !== "keypoints";
+}));
+$("#live-slide-prev").addEventListener("click", () => { state.slidePage = Math.max(1, state.slidePage - 1); $("#live-slide-pager").textContent = `${state.slidePage} / ${state.slidePages}`; });
+$("#live-slide-next").addEventListener("click", () => { state.slidePage = Math.min(state.slidePages, state.slidePage + 1); $("#live-slide-pager").textContent = `${state.slidePage} / ${state.slidePages}`; });
+$("#back-teaching").addEventListener("click", () => {
+  state.slidePage = 12;
+  $("#live-slide-pager").textContent = "12 / 32";
+  $("#follow-note").textContent = "正在浏览第 12 页 · 与授课同步";
+});
 
-/* ---------------- 专注模式 ---------------- */
+/* ---------------- 06 专注模式 ---------------- */
 function startFocus() {
-  state.focusIdx = Math.max(0, state.sIdx - 1);
-  const tick = () => {
-    const cur = SENTENCES[state.focusIdx % SENTENCES.length];
-    const prev = SENTENCES[(state.focusIdx - 1 + SENTENCES.length) % SENTENCES.length];
-    const words = cur.split("");
-    const cut = Math.max(4, Math.floor(words.length * 0.55));
-    $("#focus-prev").textContent = prev;
-    $("#focus-cur").innerHTML =
-      words.slice(0, cut).join("") + `<span class="hl">${words.slice(cut).join("")}</span>`;
-    $("#focus-src").textContent = `高等数学课件 · 第 ${1 + (state.focusIdx % 18)} 页`;
-    state.focusIdx++;
-  };
-  tick();
+  renderFocusSentence();
   clearInterval(state.timers.focus);
-  state.timers.focus = setInterval(tick, 5200);
+  state.timers.focus = setInterval(() => {
+    if (state.paused) return;
+    state.focusIdx = (state.focusIdx + 1) % SENTENCES.length;
+    renderFocusSentence();
+  }, 5200);
+}
+function renderFocusSentence() {
+  const cur = SENTENCES[state.focusIdx % SENTENCES.length];
+  const prev = SENTENCES[(state.focusIdx - 1 + SENTENCES.length) % SENTENCES.length];
+  const words = cur.zh.split("");
+  const cut = Math.max(4, Math.floor(words.length * 0.55));
+  $("#focus-prev").textContent = prev.zh;
+  $("#focus-prev-en").textContent = prev.en;
+  $("#focus-cur").innerHTML = words.slice(0, cut).join("") + `<span class="hl">${words.slice(cut).join("")}</span>`;
+  $("#focus-cur-en").textContent = cur.en;
 }
 
-/* ---------------- 问答 ---------------- */
+/* ---------------- 07 选区问答 ---------------- */
 function initQA() {
-  const list = $("#qa-list");
-  if (!list.dataset.init) {
-    list.dataset.init = "1";
-    $("#qa-chips").innerHTML = QA_SUGGEST.map(q => `<button class="chip">${q}</button>`).join("");
-    $$("#qa-chips .chip").forEach(c => c.addEventListener("click", () => ask(c.textContent)));
-    pushBubble("user", "SVD 在图像压缩里具体怎么用？");
-    setTimeout(() => pushBubble("agent", QA_ANSWERS.default.text, QA_ANSWERS.default.cite), 500);
+  renderRefList();
+  if (!$("#qa-flow").dataset.init) {
+    $("#qa-flow").dataset.init = "1";
+    pushAgentAnswer(QA_ANSWER.strong, QA_ANSWER.body, QA_ANSWER.cite, true);
   }
 }
-function pushBubble(role, text, cite) {
-  const list = $("#qa-list");
-  const div = document.createElement("div");
-  div.className = "bubble bubble-" + role;
-  div.innerHTML = text + (cite ? `<br><span class="cite">📎 ${cite}</span>` : "");
-  list.appendChild(div);
-  list.scrollTop = list.scrollHeight;
+function renderRefList() {
+  $("#ref-list").innerHTML = REF_ITEMS.map((r, i) => `
+    <div class="ref-item ${r.selection ? "selected" : ""}" data-ri="${i}">
+      <span class="t-time">${r.t}</span>
+      <p class="t-en">${r.en}</p>
+      <div class="ref-zh-wrap">
+        <p class="t-zh">${r.zh}</p>
+        ${r.selection ? '<span class="sel-tag">你的选区</span>' : ""}
+      </div>
+    </div>`).join("");
+  $$("#ref-list .ref-item").forEach(el => el.addEventListener("click", () => {
+    const i = +el.dataset.ri;
+    REF_ITEMS.forEach(r => r.selection = false);
+    REF_ITEMS[i].selection = true;
+    renderRefList();
+    $("#qa-quote").textContent = REF_ITEMS[i].zh;
+  }));
 }
-function ask(q) {
-  if (!q.trim()) return;
-  pushBubble("user", q);
-  $("#qa-input").value = "";
+function pushAgentAnswer(strong, body, cite, first) {
+  const flow = $("#qa-flow");
+  const user = document.createElement("div");
+  user.className = "qa2-user";
+  user.textContent = first ? "为什么学习率过大会震荡?" : "再解释一下这个说法。";
+  flow.appendChild(user);
+  const ans = document.createElement("div");
+  ans.className = "qa2-ans";
+  ans.innerHTML = `
+    <div class="ans-head"><span class="ans-avatar">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4"/></svg>
+    </span><span class="ans-name">Agent</span></div>
+    <b class="ans-strong">${strong}</b>
+    <p class="ans-body">${body}</p>
+    <span class="ans-cite">📄 ${cite}</span>`;
+  flow.appendChild(ans);
   const typing = document.createElement("div");
-  typing.className = "bubble bubble-agent qa-typing";
-  typing.innerHTML = "<span></span><span></span><span></span>";
-  $("#qa-list").appendChild(typing);
-  $("#qa-list").scrollTop = $("#qa-list").scrollHeight;
-  setTimeout(() => { typing.remove(); pushBubble("agent", QA_ANSWERS.default.text, QA_ANSWERS.default.cite); }, 1200);
+  typing.className = "qa2-typing-row";
+  typing.innerHTML = '<span class="qa2-typing"><span></span><span></span><span></span></span><button class="stop-answer">⏹ 停止回答</button>';
+  flow.appendChild(typing);
+  typing.querySelector(".stop-answer").addEventListener("click", () => typing.remove());
+  flow.scrollTop = flow.scrollHeight;
+  setTimeout(() => typing.remove(), 2600);
 }
-$("#qa-send").addEventListener("click", () => ask($("#qa-input").value));
-$("#qa-input").addEventListener("keydown", e => { if (e.key === "Enter") ask($("#qa-input").value); });
+$("#qa2-send").addEventListener("click", () => {
+  const v = $("#qa2-input").value.trim();
+  if (!v) return;
+  $("#qa2-input").value = "";
+  const user = document.createElement("div");
+  user.className = "qa2-user";
+  user.textContent = v;
+  $("#qa-flow").appendChild(user);
+  $("#qa-flow").scrollTop = $("#qa-flow").scrollHeight;
+  pushAgentAnswer("结合本讲内容：", QA_ANSWER.body, QA_ANSWER.cite, false);
+});
+$("#qa2-input").addEventListener("keydown", e => { if (e.key === "Enter") $("#qa2-send").click(); });
+$("#new-select").addEventListener("click", () =>
+  confirmModal("新选区提问", "点击引用区任意句子的译文，框选后即可开启新一轮问答（演示：点击句子即可切换选区）。", () => {}));
+$("#revise-trans").addEventListener("click", () =>
+  confirmModal("修订这段译文", "对当前选区译文提出修改建议，确认后应用到转写（演示）。", () => {}));
 
-/* ---------------- 停止总结 ---------------- */
+/* ---------------- 08 停止总结 ---------------- */
 function startSummary() {
-  clearInterval(state.timers.sum);
-  let pct = 0;
-  const steps = $$("#sum-steps span");
-  steps.forEach(s => s.classList.remove("done"));
-  state.timers.sum = setInterval(() => {
-    pct = Math.min(100, pct + 4 + Math.random() * 5);
-    $("#sum-pct").textContent = Math.round(pct) + "%";
-    $("#sum-bar").style.width = pct + "%";
-    steps.forEach((s, i) => s.classList.toggle("done", pct > (i + 1) * 33));
-    if (pct >= 100) {
-      clearInterval(state.timers.sum);
-      $("#sum-pct").textContent = "完成";
-      steps.forEach(s => s.classList.add("done"));
-    }
-  }, 300);
-  $("#timeline").innerHTML = TIMELINE.map(([t, d]) => `<div class="tl-row"><span class="t">${t}</span><span class="d">${d}</span></div>`).join("");
-  $("#summary-list").innerHTML = SUMMARY.map(s => `<li>${s}</li>`).join("");
+  clearInterval(state.timers.gen);
+  $("#goto-minutes").hidden = true;
+  $("#gen-badge").innerHTML = "生成中";
+  $("#gen-title").textContent = "正在整理这堂课…";
+  $("#gen-sub").textContent = "你可以先回看已生成的内容。";
+  state.timers.gen = setTimeout(() => {
+    $("#gen-badge").innerHTML = "✓ 生成完成";
+    $("#gen-title").textContent = "课堂纪要已生成";
+    $("#gen-sub").textContent = "全文纪要与核心要点已就绪，可进入纪要页查看。";
+    $("#goto-minutes").hidden = false;
+  }, 6000);
 }
+$("#btn-resume-live").addEventListener("click", () => show("live"));
+
+/* ---------------- 09 课堂纪要 ---------------- */
+function renderMinutes() {
+  $("#mtimeline-list").innerHTML = MTIMELINE.map(m => `
+    <button class="mt-row ${m.active ? "active" : ""}" data-t="${m.t}">
+      <span class="mt-dot"></span>
+      <span class="mt-time">${m.t}</span>
+      <span class="mt-label">${m.label}</span>
+    </button>`).join("");
+  $$("#mtimeline-list .mt-row").forEach(b => b.addEventListener("click", () => {
+    $$("#mtimeline-list .mt-row").forEach(x => x.classList.remove("active"));
+    b.classList.add("active");
+    seekPlayer(b.dataset.t);
+  }));
+  renderMinutesTab("digest");
+}
+function seekPlayer(t) {
+  const [mm, ss] = t.split(":").map(Number);
+  state.playSec = mm * 60 + ss;
+  updatePlayerUI();
+}
+function renderMinutesTab(tab) {
+  $$("#mtabs2 .mtab").forEach(b => b.classList.toggle("active", b.dataset.mtab === tab));
+  const body = $("#minutes2-body");
+  if (tab === "digest") {
+    body.innerHTML = `
+      <div class="digest-head"><h2>梯度下降与学习率</h2><span class="badge badge-ok">已完成</span></div>
+      <p class="digest-para">本讲介绍了梯度下降的基本思想，分析了参数更新的方向与学习率的作用，并讨论了学习率过大或过小时对收敛过程的影响，最后通过示例加深理解。</p>
+      <div class="core-points">
+        <div class="core-title">核心要点</div>
+        ${CORE_POINTS.map((p, i) => `
+          <div class="core-row">
+            <span class="core-num">${i + 1}</span>
+            <b>${p.title}：</b><span>${p.desc}</span>
+            <span class="core-time">${p.t}</span>
+          </div>`).join("")}
+      </div>
+      <div class="qa-embed">
+        <div class="qae-head"><span>💬 课堂问答 · 23:25</span><a class="link-arrow" data-mtab-goto="qa">查看问答 →</a></div>
+        <b class="qae-q">为什么学习率过大会震荡?</b>
+        <p class="qae-a">步长过大，可能反复跨过最低点。</p>
+        <span class="ans-cite">📄 课件第 12 页</span>
+      </div>
+      <div class="digest-foot">覆盖范围 00:00:00 — 00:48:26 · 无已知缺失区间</div>`;
+    const go = body.querySelector("[data-mtab-goto]");
+    go && go.addEventListener("click", () => renderMinutesTab(go.dataset.mtabGoto));
+  } else if (tab === "transcript") {
+    body.innerHTML = `
+      <div class="t-head t-head--plain">
+        <h3>实时转写</h3>
+        <div class="seg" id="m-lang-seg">
+          <button data-lang="en" class="seg-btn">原</button>
+          <button data-lang="both" class="seg-btn active">双</button>
+        </div>
+        <span class="live-updating"><span class="dot-ok"></span>实时更新</span>
+      </div>
+      <div class="transcript-flow transcript-flow--static" id="m-transcript">
+        ${SENTENCES.map(s => transcriptItemHTML(s, "both", s.t === "00:24:15")).join("")}
+      </div>`;
+    const seg = body.querySelector("#m-lang-seg");
+    seg.addEventListener("click", e => {
+      const b = e.target.closest(".seg-btn"); if (!b) return;
+      seg.querySelectorAll(".seg-btn").forEach(x => x.classList.remove("active"));
+      b.classList.add("active");
+      const mode = b.dataset.lang;
+      body.querySelector("#m-transcript").innerHTML =
+        SENTENCES.map(s => transcriptItemHTML(s, mode, s.t === "00:24:15")).join("");
+    });
+  } else if (tab === "qa") {
+    body.innerHTML = MINUTES_QA.map(x => `
+      <div class="card m-card">
+        <div class="mq-row"><b>Q · ${x.q}</b><span class="mq-time">⏱ ${x.time}</span></div>
+        <p>${x.a}</p>
+        <div class="src-line"><span>📄 ${x.cite}</span><a class="link-arrow" data-nav="qa">进入选区问答 →</a></div>
+      </div>`).join("");
+  } else {
+    body.innerHTML = `
+      <div class="follow-grid">
+        <div class="follow-transcript">
+          <div class="t-head t-head--plain"><h3>实时转写</h3></div>
+          <div class="transcript-flow transcript-flow--static">
+            ${SENTENCES.slice(0, 3).map(s => transcriptItemHTML(s, "both", false)).join("")}
+          </div>
+        </div>
+        <div class="card follow-side">
+          <div class="side-tabs">
+            <div class="panel-tabs">
+              <button class="ptab active">课件</button>
+              <button class="ptab">段落要点</button>
+            </div>
+            <span class="link-add">＋ 追加课件</span>
+          </div>
+          <div class="side-file">📄 03_Gradient_Descent.pdf</div>
+          <div class="slide-page slide-page--sm">${slidePageHTML()}</div>
+          <div class="pager-wrap">
+            <div class="pager">
+              <button class="pg-btn">‹</button><span class="pg-num">8 / 32</span><button class="pg-btn">›</button>
+            </div>
+          </div>
+          <div class="follow-row">
+            <span class="follow-note">正在浏览第 8 页 · 授课已到第 12 页</span>
+            <a class="link-arrow">返回授课页</a>
+          </div>
+        </div>
+      </div>`;
+  }
+}
+$("#mtabs2").addEventListener("click", e => {
+  const b = e.target.closest(".mtab"); if (b) renderMinutesTab(b.dataset.mtab);
+});
+$("#btn-export-html").addEventListener("click", () =>
+  confirmModal("导出摘要 HTML", "将导出包含全文摘要、时间戳与来源定位的 HTML 文件，是否继续？", () => {}));
+$("#btn-delete-minutes").addEventListener("click", () =>
+  confirmModal("删除此摘要", "删除后无法恢复，确定删除「机器学习 · 第三讲」的课堂纪要吗？", () => {}));
 
 /* 播放器 */
-$("#play-btn").addEventListener("click", () => {
+function updatePlayerUI() {
+  $("#player-cur").textContent = fmt(state.playSec);
+  const pct = (state.playSec / state.playTotal * 100).toFixed(1) + "%";
+  $("#player-fill").style.width = pct;
+  const knob = $("#player-track .player-knob");
+  knob && (knob.style.left = pct);
+}
+$("#player-btn").addEventListener("click", () => {
   state.playing = !state.playing;
-  $("#play-btn").textContent = state.playing ? "❚❚" : "▶";
+  $("#player-btn").textContent = state.playing ? "❚❚" : "▶";
   clearInterval(state.timers.play);
   if (state.playing) {
     state.timers.play = setInterval(() => {
-      state.playSec = (state.playSec + 1) % 2900;
-      $("#play-time").textContent = `${fmt(state.playSec)} / 48:12`;
+      state.playSec = (state.playSec + state.speed) % state.playTotal;
+      updatePlayerUI();
     }, 1000);
   }
 });
-
-/* ---------------- 纪要 ---------------- */
-function renderMinutes(tab) {
-  $$("#minutes-tabs button").forEach(b => b.classList.toggle("active", b.dataset.mtab === tab));
-  const body = $("#minutes-body");
-  if (tab === "minutes") {
-    body.innerHTML = `<div class="minutes-section">` + MINUTES.map((m, i) => `
-      <div class="card m-card">
-        <h4><span class="n">${i + 1}</span>${m.title}</h4>
-        <p>${m.body}</p>
-        <div class="src-line">来源：<span>📄 ${m.src.split(" · ")[0]}</span><span>🔊 ${m.src.split(" · ")[1]}</span></div>
-      </div>`).join("") + `</div>`;
-  } else if (tab === "qa") {
-    body.innerHTML = `<div class="minutes-section">` + MINUTES_QA.map(x => `
-      <div class="card m-card">
-        <h4>Q · ${x.q}</h4>
-        <p>${x.a}</p>
-        <div class="src-line"><span>⏱ ${x.time}</span></div>
-      </div>`).join("") + `</div>`;
-  } else {
-    body.innerHTML = `<div class="review-grid">
-      <div class="card preview-pane" style="min-height:auto">
-        <div class="preview-head"><h3>矩阵分解讲义.pdf</h3><span class="badge badge-ok">已结束</span></div>
-        <div class="preview-body"><p><b>第 2 章 低秩近似</b></p>
-          <p style="margin-top:10px">2.1 Eckart–Young 定理：在 Frobenius 范数意义下，截断 SVD 给出最优低秩逼近。</p>
-          <p style="margin-top:10px">2.2 应用：推荐系统中的矩阵补全。</p></div>
-      </div>
-      <div class="card preview-pane" style="min-height:auto">
-        <div class="preview-head"><h3>高等数学-第12周课件.pdf</h3><span class="badge badge-ok">已结束</span></div>
-        <div class="preview-body"><p><b>第 5 页 · 例题</b></p>
-          <p style="margin-top:10px">手算 A = [1 2; 3 4; 5 6] 的 SVD：先求 AAᵀ 的特征值与特征向量…</p></div>
-      </div></div>`;
-  }
-}
-$("#minutes-tabs").addEventListener("click", e => {
-  const b = e.target.closest("button"); if (b) renderMinutes(b.dataset.mtab);
+$("#player-speed").addEventListener("click", () => {
+  const speeds = [1.0, 1.5, 2.0];
+  state.speed = speeds[(speeds.indexOf(state.speed) + 1) % speeds.length];
+  $("#player-speed").textContent = state.speed.toFixed(1) + "× ⌄";
 });
-$("#btn-export").addEventListener("click", () =>
-  confirmModal("导出纪要", "将导出为 Markdown 文件（含时间戳与来源定位），是否继续？", () => {}));
+$("#player-track").addEventListener("click", e => {
+  const rect = e.currentTarget.getBoundingClientRect();
+  const pct = Math.min(Math.max(0, (e.clientX - rect.left) / rect.width), 1);
+  state.playSec = Math.round(pct * state.playTotal);
+  updatePlayerUI();
+});
 
 /* ---------------- 录音导入 ---------------- */
 function renderImport() {
@@ -464,7 +687,7 @@ function renderImport() {
       const div = document.createElement("div");
       div.className = "import-file";
       div.innerHTML = `<svg class="fi" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 18V6l10-2v12"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="16" r="3"/></svg>
-        <span class="fn">线性代数-补录.m4a</span><span class="fs">36:24 · 识别中</span><span class="spinner"></span>`;
+        <span class="fn">高等数学-补录.m4a</span><span class="fs">36:24 · 识别中</span><span class="spinner"></span>`;
       $("#import-list").appendChild(div);
       setTimeout(() => { div.querySelector(".fs").textContent = "36:24 · 识别完成"; div.querySelector(".spinner").remove(); }, 3000);
     });
@@ -487,6 +710,17 @@ function renderReview() {
     b.style.color = oi === REVIEW[ri].ans ? "var(--ok)" : "var(--danger)";
   }));
 }
+
+/* ---------------- 通用确认弹窗 ---------------- */
+let confirmCb = null;
+function confirmModal(title, text, cb) {
+  $("#confirm-title").textContent = title;
+  $("#confirm-text").textContent = text;
+  confirmCb = cb;
+  $("#modal-confirm").hidden = false;
+}
+$("#confirm-cancel").addEventListener("click", () => $("#modal-confirm").hidden = true);
+$("#confirm-ok").addEventListener("click", () => { $("#modal-confirm").hidden = true; confirmCb && confirmCb(); });
 
 /* ---------------- 启动：先进入登录页 ---------------- */
 $("#view-login").hidden = false;
